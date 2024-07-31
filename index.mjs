@@ -40,14 +40,30 @@ app.post('/echo', (req, res) => {
 const storage = multer.memoryStorage();
 const upload = multer({ storage: storage });
 
+// Supported languages
+const supportedLanguages = {
+    english: 'en-US',
+    hindi: 'hi-IN',
+    telugu: 'te-IN',
+    malayalam: 'ml-IN',
+    kannada: 'kn-IN',
+    tamil: 'ta-IN'
+};
+
 app.post('/upload', upload.single('file'), async (req, res) => {
     const file = req.file;
+    const { language } = req.body; // Get language from request body
     const fileName = `${uuidv4()}-${file.originalname}`;
     const s3Params = {
         Bucket: 'node-transcript', // Your bucket name
         Key: fileName,
         Body: file.buffer
     };
+
+    const languageCode = supportedLanguages[language.toLowerCase()];
+    if (!languageCode) {
+        return res.status(400).json({ error: 'Unsupported language' });
+    }
 
     try {
         // Upload file to S3
@@ -57,7 +73,7 @@ app.post('/upload', upload.single('file'), async (req, res) => {
         // Start Transcription Job
         const transcribeParams = {
             TranscriptionJobName: uuidv4(),
-            LanguageCode: 'en-US', // Update with your language code if needed
+            LanguageCode: languageCode, // Use the appropriate language code
             Media: {
                 MediaFileUri: `s3://node-transcript/${fileName}` // Your bucket name
             },
@@ -98,4 +114,3 @@ app.get('/transcription/:jobId', async (req, res) => {
 app.listen(port, () => {
     console.log(`Server running on port ${port}`);
 });
-
